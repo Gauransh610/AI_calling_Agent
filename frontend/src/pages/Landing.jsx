@@ -81,14 +81,6 @@ export default function Landing({ onNavigate }) {
         </div>
       </section>
 
-      <section style={{ background: '#000', padding: '70px 32px', textAlign: 'center' }}>
-        <div style={{ maxWidth: 640, margin: '0 auto', fontStyle: 'italic', fontSize: 22, color: '#d4d4d8' }}>
-          "I replaced my $800/month AI phone service with this. Runs on my old MacBook and it just works."
-        </div>
-        <div style={{ marginTop: 24, color: '#fff', fontWeight: 500 }}>Priya Sharma</div>
-        <div style={{ fontSize: 12, color: '#a1a1aa' }}>Founder @ LocalMed AI</div>
-      </section>
-
       <footer style={{ padding: '50px 32px', textAlign: 'center', color: '#71717a', fontSize: 12 }}>
         Built as a portfolio project • Free & local • © 2026 neuraLabs
       </footer>
