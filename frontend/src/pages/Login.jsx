@@ -24,24 +24,6 @@ export default function Login({ onNavigate, onAuthed, showToast }) {
     }
   }
 
-  async function handleDemoLogin() {
-    setEmail('demo@neuracall.dev')
-    setPassword('demo1234')
-    setError('')
-    setLoading(true)
-    try {
-      const data = await api.login({ email: 'demo@neuracall.dev', password: 'demo1234' })
-      setToken(data.token)
-      onAuthed(data.user)
-      showToast('Logged in with demo account')
-      onNavigate('dashboard')
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ maxWidth: 420, width: '100%' }}>
@@ -69,9 +51,6 @@ export default function Login({ onNavigate, onAuthed, showToast }) {
             {loading ? 'Logging in…' : 'Log in'}
           </button>
 
-          <button type="button" onClick={handleDemoLogin} className="btn-outline" style={{ height: 44, fontSize: 13 }} disabled={loading}>
-            Use demo account (demo@neuracall.dev / demo1234)
-          </button>
         </form>
 
         <div style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: '#a1a1aa' }}>

@@ -40,11 +40,6 @@ npm start
 
 Then open **http://localhost:4173** in Chrome (recommended — best Web Speech API support).
 
-## Demo account
-
-- Email: `demo@neuracall.dev`
-- Password: `demo1234`
-
 ## How a call works
 
 1. Log in → Dashboard → **Start new call**

@@ -11,7 +11,7 @@ const publicDir = resolve(__dirname, 'public');
 const dataDir = resolve(__dirname, 'data');
 const dbPath = resolve(dataDir, 'neuracall.sqlite');
 const port = Number(process.env.PORT || 4173);
-const host = process.env.HOST || '127.0.0.1';
+const host = process.env.HOST || '0.0.0.0';
 const sessions = new Map();
 
 await mkdir(dataDir, { recursive: true });
@@ -46,8 +46,6 @@ db.exec(`
   );
 `);
 
-seedDemoData();
-
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -78,9 +76,8 @@ const appServer = createServer(async (req, res) => {
 });
 
 if (process.env.NEURACALL_SELF_TEST === '1') {
-  const demoUser = db.prepare('SELECT id FROM users WHERE email = ?').get('demo@neuracall.dev');
-  const demoStats = demoUser ? getStats(demoUser.id) : null;
-  console.log(JSON.stringify({ ok: Boolean(demoUser), database: dbPath, stats: demoStats }, null, 2));
+  const userCount = db.prepare('SELECT COUNT(*) AS count FROM users').get().count;
+  console.log(JSON.stringify({ ok: true, database: dbPath, userCount }, null, 2));
 } else {
   appServer.listen(port, host, () => {
     console.log(`neuraCall React app running at http://${host}:${port}`);
@@ -361,85 +358,6 @@ function getStats(userId) {
 function getSerializedCallBytes(userId) {
   const rows = db.prepare('SELECT transcript, summary FROM calls WHERE user_id = ?').all(userId);
   return rows.reduce((bytes, row) => bytes + Buffer.byteLength(`${row.transcript || ''}${row.summary || ''}`), 0);
-}
-
-function seedDemoData() {
-  const demoEmail = 'demo@neuracall.dev';
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(demoEmail);
-  let userId = existing?.id;
-
-  if (!userId) {
-    const passwordData = hashPassword('demo1234');
-    const result = db.prepare(`
-      INSERT INTO users (name, email, password_hash, password_salt)
-      VALUES (?, ?, ?, ?)
-    `).run('Alex Rivera', demoEmail, passwordData.hash, passwordData.salt);
-    userId = result.lastInsertRowid;
-  }
-
-  const count = db.prepare('SELECT COUNT(*) AS count FROM calls WHERE user_id = ?').get(userId).count;
-  if (count > 0) return;
-
-  const seedCalls = [
-    {
-      contact: 'Linda Chen',
-      phone: '+1 555 0129',
-      status: 'completed',
-      duration: 434,
-      minutesAgo: 31,
-      transcript: [
-        { speaker: 'agent', text: 'Hello Linda, this is Alex’s AI assistant. Do you have a moment?' },
-        { speaker: 'contact', text: 'Yes, this is a good time.' },
-        { speaker: 'agent', text: 'Great. I am confirming your product demo for next Tuesday at 10.' }
-      ],
-      summary: 'Confirmed the product demo for next Tuesday at 10.'
-    },
-    {
-      contact: 'Michael Torres',
-      phone: '+1 555 0190',
-      status: 'completed',
-      duration: 770,
-      minutesAgo: 1500,
-      transcript: [
-        { speaker: 'agent', text: 'Following up on the support ticket.' },
-        { speaker: 'contact', text: 'The issue is fixed now, thank you.' }
-      ],
-      summary: 'Confirmed support issue was resolved.'
-    },
-    {
-      contact: 'Rachel Kim',
-      phone: '+1 555 0162',
-      status: 'voicemail',
-      duration: 202,
-      minutesAgo: 1780,
-      transcript: [
-        { speaker: 'agent', text: 'Leaving a reminder about tomorrow’s appointment.' }
-      ],
-      summary: 'Left appointment reminder voicemail.'
-    }
-  ];
-
-  const insert = db.prepare(`
-    INSERT INTO calls (user_id, contact, phone, status, duration_seconds, model, transcript, summary, started_at, ended_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  for (const call of seedCalls) {
-    const endedAt = new Date(Date.now() - call.minutesAgo * 60_000);
-    const startedAt = new Date(endedAt.getTime() - call.duration * 1000);
-    insert.run(
-      userId,
-      call.contact,
-      call.phone,
-      call.status,
-      call.duration,
-      'llama3.1:8b',
-      JSON.stringify(call.transcript),
-      call.summary,
-      startedAt.toISOString(),
-      endedAt.toISOString()
-    );
-  }
 }
 
 function hashPassword(password) {
