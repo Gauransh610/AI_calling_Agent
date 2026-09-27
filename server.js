@@ -12,6 +12,8 @@ const dataDir = resolve(__dirname, 'data');
 const dbPath = resolve(dataDir, 'neuracall.sqlite');
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || '0.0.0.0';
+const ollamaBaseUrl = (process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
+const ollamaModel = process.env.OLLAMA_MODEL || 'llama3.1:8b';
 const sessions = new Map();
 
 await mkdir(dataDir, { recursive: true });
@@ -207,7 +209,7 @@ async function handleApi(req, res, url) {
     } catch (error) {
       console.error('Ollama error:', error.message);
       sendJson(res, 502, {
-        error: 'Could not reach Ollama. Make sure "ollama serve" is running and the model is pulled.'
+        error: 'The AI service is unavailable. Configure OLLAMA_BASE_URL to an Ollama server reachable by the backend and ensure OLLAMA_MODEL is available.'
       });
     }
     return;
@@ -229,10 +231,10 @@ async function getOllamaReply(contact, history, userMessage) {
     { role: 'user', content: userMessage }
   ];
 
-  const response = await fetch('http://127.0.0.1:11434/api/chat', {
+  const response = await fetch(`${ollamaBaseUrl}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'llama3.1:8b', messages, stream: false })
+    body: JSON.stringify({ model: ollamaModel, messages, stream: false })
   });
 
   if (!response.ok) {
