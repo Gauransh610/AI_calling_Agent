@@ -27,7 +27,7 @@ export default function Dashboard({ user, showToast }) {
     ['Total calls', stats.totalCalls],
     ['Success rate', `${stats.successRate}%`],
     ['Avg duration', `${stats.avgDurationMinutes}m`],
-    ['Storage used', `${stats.storageUsedMb} MB`]
+    ['Storage used', formatStorage(stats.storageUsedBytes ?? Number(stats.storageUsedMb || 0) * 1024 * 1024)]
   ] : []
 
   return (
@@ -91,6 +91,20 @@ export default function Dashboard({ user, showToast }) {
       )}
     </div>
   )
+}
+
+function formatStorage(byteCount) {
+  let size = Math.max(0, Number(byteCount) || 0)
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let unitIndex = 0
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024
+    unitIndex += 1
+  }
+
+  const decimals = unitIndex === 0 ? 0 : unitIndex === 1 ? 1 : 2
+  return `${size.toFixed(decimals)} ${units[unitIndex]}`
 }
 
 function StatusBadge({ status }) {

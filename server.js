@@ -378,19 +378,21 @@ function getStats(userId) {
 
   const total = Number(aggregate.total || 0);
   const completed = Number(aggregate.completed || 0);
+  const storageUsedBytes = getSerializedCallBytes(userId);
 
   return {
     totalCalls: total,
     successRate: total ? Math.round((completed / total) * 100) : 0,
     avgDurationMinutes: Number(((Number(aggregate.avg_duration || 0)) / 60).toFixed(1)),
-    storageUsedMb: Number(((getSerializedCallBytes(userId) / 1024 / 1024) || 0).toFixed(2)),
+    storageUsedBytes,
+    storageUsedMb: storageUsedBytes / 1024 / 1024,
     currentModel: 'Llama 3.1 8B'
   };
 }
 
 function getSerializedCallBytes(userId) {
-  const rows = db.prepare('SELECT transcript, summary FROM calls WHERE user_id = ?').all(userId);
-  return rows.reduce((bytes, row) => bytes + Buffer.byteLength(`${row.transcript || ''}${row.summary || ''}`), 0);
+  const rows = db.prepare('SELECT * FROM calls WHERE user_id = ?').all(userId);
+  return rows.reduce((bytes, row) => bytes + Buffer.byteLength(JSON.stringify(publicCall(row))), 0);
 }
 
 function hashPassword(password) {
