@@ -14,6 +14,7 @@ export default function CallModal({ onClose, onSaved, showToast }) {
   const [startedAt] = useState(() => new Date())
   const recognitionRef = useRef(null)
   const transcriptEndRef = useRef(null)
+  const manualInputRef = useRef(null)
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -60,7 +61,8 @@ export default function CallModal({ onClose, onSaved, showToast }) {
 
   function toggleListening() {
     if (!SpeechRecognitionImpl) {
-      showToast('Speech recognition is not supported in this browser — try Chrome, or use the text box below.')
+      showToast('Voice input is unavailable here. Use your keyboard mic or type a message.')
+      manualInputRef.current?.focus()
       return
     }
 
@@ -79,11 +81,26 @@ export default function CallModal({ onClose, onSaved, showToast }) {
       sendMessage(text)
     }
     recognition.onend = () => setListening(false)
-    recognition.onerror = () => setListening(false)
+    recognition.onerror = (event) => {
+      setListening(false)
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        showToast('Microphone access was blocked. Allow it in browser settings, or use the keyboard mic.')
+        manualInputRef.current?.focus()
+      } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        showToast('Voice input failed. Use your keyboard mic or type a message.')
+        manualInputRef.current?.focus()
+      }
+    }
 
     recognitionRef.current = recognition
-    recognition.start()
-    setListening(true)
+    try {
+      recognition.start()
+      setListening(true)
+    } catch {
+      setListening(false)
+      showToast('Could not start voice input. Use your keyboard mic or type a message.')
+      manualInputRef.current?.focus()
+    }
   }
 
   function handleManualSubmit(e) {
@@ -117,11 +134,11 @@ export default function CallModal({ onClose, onSaved, showToast }) {
   }
 
   return (
-    <div style={{
+    <div className="call-modal-backdrop" style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
     }}>
-      <div className="card" style={{ width: '100%', maxWidth: 480, padding: 28, display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div className="card call-modal" style={{ width: '100%', maxWidth: 480, padding: 28, display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <input
             value={contact}
@@ -132,7 +149,7 @@ export default function CallModal({ onClose, onSaved, showToast }) {
           <span style={{ color: '#34d399', fontSize: 11, fontWeight: 700 }}>● LIVE</span>
         </div>
 
-        <div style={{
+        <div className="call-transcript" style={{
           background: '#09090b', border: '1px solid #27272a', borderRadius: 18, padding: 16,
           height: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14
         }}>
@@ -172,8 +189,9 @@ export default function CallModal({ onClose, onSaved, showToast }) {
           {listening ? '🎙️ Listening… tap to stop' : '🎙️ Tap to speak'}
         </button>
 
-        <form onSubmit={handleManualSubmit} style={{ display: 'flex', gap: 8 }}>
+        <form onSubmit={handleManualSubmit} className="manual-message-form" style={{ display: 'flex', gap: 8 }}>
           <input
+            ref={manualInputRef}
             className="input-field"
             placeholder="…or type instead of speaking"
             value={manualInput}
