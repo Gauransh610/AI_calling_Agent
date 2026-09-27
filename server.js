@@ -1,20 +1,25 @@
+import 'dotenv/config';
 import { pbkdf2Sync, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import nodemailer from 'nodemailer';
+import { UAParser } from 'ua-parser-js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const publicDir = resolve(__dirname, 'public');
 const dataDir = resolve(__dirname, 'data');
 const dbPath = resolve(dataDir, 'neuracall.sqlite');
+const visitLogPath = resolve(dataDir, 'visits.json');
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || '0.0.0.0';
 const ollamaBaseUrl = (process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
 const ollamaModel = process.env.OLLAMA_MODEL || 'llama3.1:8b';
 const sessions = new Map();
+let visitWriteQueue = Promise.resolve();
 
 await mkdir(dataDir, { recursive: true });
 
@@ -93,6 +98,31 @@ async function handleApi(req, res, url) {
     return;
   }
 
+  if (req.method === 'POST' && url.pathname === '/api/visits') {
+    const body = await readJson(req);
+    const userAgent = String(req.headers['user-agent'] || '').slice(0, 1000);
+    const userAgentInfo = new UAParser(userAgent).getResult();
+    const visit = {
+      timestamp: new Date().toISOString(),
+      ip: getClientIp(req),
+      userAgent,
+      device: userAgentInfo.device.type || 'desktop',
+      browser: userAgentInfo.browser.name || 'Unknown',
+      os: userAgentInfo.os.name || 'Unknown',
+      page: cleanVisitPage(body.page),
+      referrer: cleanVisitReferrer(body.referrer)
+    };
+
+    try {
+      await appendVisit(visit);
+      sendJson(res, 201, { ok: true });
+    } catch (error) {
+      console.error('Visit tracking failed:', error.message);
+      sendJson(res, 500, { error: 'Could not record visit.' });
+    }
+    return;
+  }
+
   if (req.method === 'POST' && url.pathname === '/api/auth/signup') {
     const body = await readJson(req);
     const name = cleanText(body.name);
@@ -135,6 +165,7 @@ async function handleApi(req, res, url) {
 
     const user = publicUser(row);
     const token = createSession(user.id);
+    void sendLoginEmail(user);
     sendJson(res, 200, { token, user });
     return;
   }
@@ -377,6 +408,107 @@ function verifyPassword(password, expectedHash, salt) {
 function cleanEmail(value) {
   const email = String(value || '').trim().toLowerCase();
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '';
+}
+
+function getClientIp(req) {
+  const forwardedFor = req.headers['x-nf-client-connection-ip'] || req.headers['x-forwarded-for'];
+  const address = String(forwardedFor || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+  return address.replace(/^::ffff:/, '').slice(0, 100);
+}
+
+function cleanVisitPage(value) {
+  const page = String(value || '/').slice(0, 2048);
+  if (!page.startsWith('/') || page.startsWith('//')) return '/';
+
+  try {
+    return new URL(page, 'http://localhost').pathname.slice(0, 300) || '/';
+  } catch {
+    return '/';
+  }
+}
+
+function cleanVisitReferrer(value) {
+  const referrer = String(value || '').trim().slice(0, 2048);
+  if (!referrer || referrer === 'direct') return 'direct';
+  if (referrer.startsWith('/')) return cleanVisitPage(referrer);
+
+  try {
+    const url = new URL(referrer);
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      return `${url.origin}${url.pathname}`.slice(0, 500);
+    }
+  } catch {
+    return 'direct';
+  }
+
+  return 'direct';
+}
+
+function appendVisit(visit) {
+  const write = visitWriteQueue.catch(() => {}).then(async () => {
+    let visits = [];
+    try {
+      const content = await readFile(visitLogPath, 'utf8');
+      visits = JSON.parse(content);
+      if (!Array.isArray(visits)) throw new Error('Visit log must contain a JSON array.');
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+
+    visits.push(visit);
+    await writeFile(visitLogPath, `${JSON.stringify(visits, null, 2)}\n`, { mode: 0o600 });
+  });
+  visitWriteQueue = write;
+  return write;
+}
+
+async function sendLoginEmail(user) {
+  const { EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASSWORD } = process.env;
+  if (!EMAIL_HOST || !EMAIL_USER || !EMAIL_PASSWORD) {
+    console.info('Login email skipped: configure EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD.');
+    return;
+  }
+
+  const port = Number(EMAIL_PORT || 587);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    console.error('Login email delivery failed: EMAIL_PORT must be a valid port number.');
+    return;
+  }
+
+  const name = user.name || 'there';
+  const escapedName = escapeHtml(name);
+  const text = `Hi ${name},\n\nThank you for logging in to our website!\n\nYour login was successful. You can now continue using your account and access all available features.\n\nIf you did not perform this login, please secure your account and contact us immediately.\n\nThanks,\nThe neuraCall Team`;
+  const html = `<div style="max-width:560px;margin:0 auto;padding:36px 24px;font-family:Arial,sans-serif;color:#17202a;line-height:1.6"><h1 style="font-size:24px;margin:0 0 24px">Hi ${escapedName},</h1><p>Thank you for logging in to our website!</p><p>Your login was successful. You can now continue using your account and access all available features.</p><p>If you did not perform this login, please secure your account and contact us immediately.</p><p style="margin-top:28px">Thanks,<br><strong>The neuraCall Team</strong></p></div>`;
+  const transporter = nodemailer.createTransport({
+    host: EMAIL_HOST,
+    port,
+    secure: port === 465,
+    auth: { user: EMAIL_USER, pass: EMAIL_PASSWORD }
+  });
+
+  try {
+    await transporter.sendMail({
+      from: { name: 'neuraCall', address: EMAIL_USER },
+      to: user.email,
+      subject: 'Thank You for Logging In!',
+      text,
+      html
+    });
+  } catch (error) {
+    console.error('Login email delivery failed:', error.code || error.message);
+  } finally {
+    transporter.close();
+  }
+}
+
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]);
 }
 
 function cleanText(value) {

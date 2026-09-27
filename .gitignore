@@ -1,5 +1,9 @@
 node_modules/
 data/
+data/visits.json
 public/
+.env
+.env.*
+!.env.example
 .DS_Store
 *.log

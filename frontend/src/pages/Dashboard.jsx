@@ -31,8 +31,8 @@ export default function Dashboard({ user, showToast }) {
   ] : []
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '110px 32px 60px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
+    <div className="dashboard-page" style={{ maxWidth: 1100, margin: '0 auto', padding: '110px 32px 60px' }}>
+      <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
         <div>
           <h1 style={{ fontSize: 30, fontWeight: 600, color: '#fff', margin: 0 }}>Welcome back, {user.name.split(' ')[0]}</h1>
           <p style={{ color: '#a1a1aa', marginTop: 6 }}>Here's what your agent has been up to.</p>
@@ -42,7 +42,7 @@ export default function Dashboard({ user, showToast }) {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 40 }}>
+      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 40 }}>
         {statCards.map(([label, value]) => (
           <div key={label} className="card" style={{ padding: 20 }}>
             <div style={{ fontSize: 12, color: '#a1a1aa' }}>{label}</div>
@@ -51,7 +51,7 @@ export default function Dashboard({ user, showToast }) {
         ))}
       </div>
 
-      <div className="card" style={{ padding: 24 }}>
+      <div className="card calls-card" style={{ padding: 24 }}>
         <div style={{ fontSize: 16, fontWeight: 600, color: '#fff', marginBottom: 16 }}>Recent calls</div>
 
         {loading && <div style={{ color: '#a1a1aa', fontSize: 13 }}>Loading…</div>}
@@ -63,7 +63,7 @@ export default function Dashboard({ user, showToast }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {calls.map(call => (
-            <div key={call.id} style={{
+            <div key={call.id} className="call-row" style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               padding: '14px 8px', borderBottom: '1px solid #27272a'
             }}>
@@ -71,7 +71,7 @@ export default function Dashboard({ user, showToast }) {
                 <div style={{ color: '#fff', fontWeight: 500, fontSize: 14 }}>{call.contact}</div>
                 <div style={{ color: '#71717a', fontSize: 12, marginTop: 2 }}>{call.summary || 'No summary'}</div>
               </div>
-              <div style={{ textAlign: 'right' }}>
+              <div className="call-meta" style={{ textAlign: 'right' }}>
                 <StatusBadge status={call.status} />
                 <div style={{ color: '#71717a', fontSize: 11, marginTop: 4 }}>
                   {Math.round(call.durationSeconds / 60)}m {call.durationSeconds % 60}s • {new Date(call.startedAt).toLocaleString()}

@@ -11,5 +11,10 @@
   },
   "engines": {
     "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.4",
+    "nodemailer": "^10.0.11",
+    "ua-parser-js": "^2.0.10"
   }
 }

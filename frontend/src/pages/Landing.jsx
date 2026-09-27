@@ -1,8 +1,8 @@
 export default function Landing({ onNavigate }) {
   return (
     <div>
-      <header className="hero-bg" style={{ paddingTop: 140, paddingBottom: 100 }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px', display: 'flex', justifyContent: 'center' }}>
+      <header className="hero-bg hero-header" style={{ paddingTop: 140, paddingBottom: 100 }}>
+        <div className="hero-content" style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px', display: 'flex', justifyContent: 'center' }}>
           <div style={{ maxWidth: 760, textAlign: 'center' }}>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,.1)',
@@ -13,7 +13,7 @@ export default function Landing({ onNavigate }) {
               POWERED BY OLLAMA • 100% LOCAL
             </div>
 
-            <h1 className="logo-font" style={{ fontSize: 64, fontWeight: 600, lineHeight: 1.05, letterSpacing: '-2px', color: '#fff', margin: 0 }}>
+            <h1 className="logo-font hero-title" style={{ fontSize: 64, fontWeight: 600, lineHeight: 1.05, letterSpacing: '-2px', color: '#fff', margin: 0 }}>
               Your AI calling<br />agent that <span className="gradient-text">actually</span><br />speaks like you
             </h1>
 
@@ -38,9 +38,9 @@ export default function Landing({ onNavigate }) {
         </div>
       </header>
 
-      <section style={{ maxWidth: 1400, margin: '0 auto', padding: '80px 32px' }}>
+      <section className="steps-section" style={{ maxWidth: 1400, margin: '0 auto', padding: '80px 32px' }}>
         <h2 className="logo-font" style={{ fontSize: 36, color: '#fff', textAlign: 'center', marginBottom: 50 }}>How it works</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}>
+        <div className="steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}>
           {[
             ['1', 'Sign up free', 'Create an account — no credit card required.'],
             ['2', 'Pick your agent', 'Choose personality and how it should respond.'],

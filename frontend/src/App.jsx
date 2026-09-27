@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Navbar from './components/Navbar'
 import Toast from './components/Toast'
 import Landing from './pages/Landing'
@@ -12,6 +12,8 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [toast, setToastMsg] = useState('')
+  const lastTrackedPage = useRef('')
+  const previousPage = useRef('')
 
   function showToast(msg) {
     setToastMsg(msg)
@@ -33,6 +35,24 @@ export default function App() {
     }
     restoreSession()
   }, [])
+
+  useEffect(() => {
+    if (checkingAuth) return
+
+    const pagePaths = {
+      landing: '/',
+      login: '/login',
+      signup: '/signup',
+      dashboard: '/dashboard'
+    }
+    const currentPage = pagePaths[page] || '/'
+    if (lastTrackedPage.current === currentPage) return
+
+    const referrer = previousPage.current || document.referrer || 'direct'
+    lastTrackedPage.current = currentPage
+    previousPage.current = currentPage
+    api.trackVisit({ page: currentPage, referrer }).catch(() => {})
+  }, [checkingAuth, page])
 
   async function handleLogout() {
     try { await api.logout() } catch { /* ignore */ }

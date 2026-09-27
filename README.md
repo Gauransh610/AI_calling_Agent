@@ -40,6 +40,20 @@ npm start
 
 Then open **http://localhost:4173** in Chrome (recommended — best Web Speech API support).
 
+## Login thank-you emails
+
+After each successful login, the backend sends a confirmation email to the exact email address used to log in. The SMTP credentials are read only by the backend from `.env` and are never sent to the frontend.
+
+Copy `.env.example` to `.env` and fill in the SMTP settings for your email provider:
+
+For the deployed app, add the same variables in the Render service's **Environment** settings; Netlify forwards `/api/*` requests to that backend. If configuration is missing or email delivery fails, login still succeeds and the backend logs the issue.
+
+## Ollama configuration
+
+Local development defaults to `http://127.0.0.1:11434` and model `llama3.1:8b`. Override these with `OLLAMA_BASE_URL` and `OLLAMA_MODEL` in `.env` as needed.
+
+The deployed backend runs on Render, so `127.0.0.1` refers to the Render service, not your computer. For deployed calls, set `OLLAMA_BASE_URL` in Render to an Ollama server reachable from that backend, and make sure the configured model is installed there. Do not expose an unauthenticated Ollama server directly to the public internet.
+
 ## How a call works
 
 1. Log in → Dashboard → **Start new call**
@@ -72,13 +86,16 @@ neuracall-app/
 - `POST /api/auth/signup`
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
+- `POST /api/visits` — records non-sensitive visit metadata in the private backend `data/visits.json` file
 - `GET /api/me`
 - `GET /api/calls`
 - `POST /api/calls`
 - `GET /api/stats`
-- `POST /api/agent/reply` — proxies to local Ollama (`http://127.0.0.1:11434`)
+- `POST /api/agent/reply` — proxies to Ollama at `OLLAMA_BASE_URL` (`http://127.0.0.1:11434` by default)
 
 ## Notes
 
-- Everything runs 100% locally — no paid APIs, no cloud calls, no credit card.
+- Visit records are stored only in the backend's `data/visits.json`; the server serves frontend assets only from `public/`, and the log is gitignored.
+- Login confirmation emails are optional and use the SMTP settings in the backend `.env` file.
+- Local development uses Ollama on the same machine; deployed backends need a separately reachable Ollama server.
 - Speech recognition works best in Chrome/Edge. Safari has limited support; a text-input fallback is included in the call modal either way.

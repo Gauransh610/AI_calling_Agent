@@ -32,17 +32,17 @@ export default function Signup({ onNavigate, onAuthed, showToast }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+    <div className="auth-page" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ maxWidth: 420, width: '100%' }}>
         <div onClick={() => onNavigate('landing')} style={{ fontSize: 13, color: '#a1a1aa', cursor: 'pointer', marginBottom: 32 }}>← Back to home</div>
 
         <div style={{ textAlign: 'center' }}>
           <div style={{ width: 48, height: 48, margin: '0 auto', background: 'linear-gradient(135deg,#a855f7,#22d3ee)', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>📞</div>
-          <h1 style={{ fontSize: 32, fontWeight: 600, marginTop: 20, color: '#fff' }}>Create your free account</h1>
+          <h1 className="auth-title" style={{ fontSize: 32, fontWeight: 600, marginTop: 20, color: '#fff' }}>Create your free account</h1>
           <p style={{ color: '#a1a1aa', marginTop: 8 }}>Start calling with local AI today. No credit card required.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="glass card" style={{ marginTop: 36, padding: 32, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <form onSubmit={handleSubmit} className="glass card auth-form" style={{ marginTop: 36, padding: 32, display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div>
             <label style={{ fontSize: 12, color: '#a1a1aa', fontWeight: 600 }}>FULL NAME</label>
             <input className="input-field" style={{ marginTop: 6 }} required value={name} onChange={e => setName(e.target.value)} placeholder="Alex Rivera" />
