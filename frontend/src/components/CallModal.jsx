@@ -82,6 +82,10 @@ export default function CallModal({ onClose, onSaved, showToast }) {
   }
 
   function toggleListening() {
+    showToast('MIC BUTTON IS WORKING')
+
+    console.log('🎤 MIC BUTTON CLICKED')
+
    
     const SpeechRecognitionImpl =
       window.SpeechRecognition || window.webkitSpeechRecognition
