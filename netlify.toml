@@ -4,6 +4,6 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://neuracall-backend.onrender.com/api/:splat"
+  to = "https://ai-calling-agent-3p3l.onrender.com/api/:splat"
   status = 200
   force = true
