@@ -99,3 +99,4 @@ neuracall-app/
 - Login confirmation emails are optional and use the SMTP settings in the backend `.env` file.
 - Local development uses Ollama on the same machine; deployed backends need a separately reachable Ollama server.
 - Speech recognition works best in Chrome/Edge. Safari has limited support; a text-input fallback is included in the call modal either way.
+- Also add a auto logout functionality when not in use
