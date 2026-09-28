@@ -19,6 +19,15 @@ const host = process.env.HOST || '0.0.0.0';
 const ollamaBaseUrl = (process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
 const ollamaModel = process.env.OLLAMA_MODEL || 'llama3.1:8b';
 const sessions = new Map();
+// Sessions expire after this much INACTIVITY (each authenticated request renews it).
+const sessionIdleMinutes = Number(process.env.SESSION_IDLE_MINUTES);
+const sessionIdleMs = (sessionIdleMinutes > 0 ? sessionIdleMinutes : 3) * 60_000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, session] of sessions) {
+    if (now - session.lastActivityAt > sessionIdleMs) sessions.delete(token);
+  }
+}, 30_000).unref();
 let visitWriteQueue = Promise.resolve();
 
 await mkdir(dataDir, { recursive: true });
@@ -353,6 +362,12 @@ function requireAuth(req, res) {
     return null;
   }
 
+  if (Date.now() - session.lastActivityAt > sessionIdleMs) {
+    sessions.delete(token);
+    sendJson(res, 401, { error: 'Session expired due to inactivity. Please log in again.' });
+    return null;
+  }
+
   const user = getUserById(session.userId);
   if (!user) {
     sessions.delete(token);
@@ -360,6 +375,7 @@ function requireAuth(req, res) {
     return null;
   }
 
+  session.lastActivityAt = Date.now();
   return { token, user };
 }
 
@@ -370,7 +386,8 @@ function getBearerToken(req) {
 
 function createSession(userId) {
   const token = randomUUID();
-  sessions.set(token, { userId, createdAt: Date.now() });
+  const now = Date.now();
+  sessions.set(token, { userId, createdAt: now, lastActivityAt: now });
   return token;
 }
 

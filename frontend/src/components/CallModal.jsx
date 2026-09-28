@@ -38,13 +38,12 @@ export default function CallModal({ onClose, onSaved, showToast }) {
   const [speaking, setSpeaking] = useState(false)
   const [thinking, setThinking] = useState(false)
   const [interim, setInterim] = useState('')
-  const [notice, setNotice] = useState('')
   const [manualInput, setManualInput] = useState('')
   const [startedAt] = useState(() => new Date())
 
   const recognitionRef = useRef(null)
   const transcriptEndRef = useRef(null)
-  const transcriptRef = useRef([])        // always-fresh copy for async callbacks
+  const transcriptRef = useRef([])        
   const contactRef = useRef(contact)
   const startTimerRef = useRef(null)
 
@@ -60,7 +59,12 @@ export default function CallModal({ onClose, onSaved, showToast }) {
     window.speechSynthesis?.getVoices()
     speak("Hi! I'm your AI calling agent. Tap the mic and say hello to start the conversation.")
 
+
+    const onHide = () => { if (document.hidden) stopRecognition() }
+    document.addEventListener('visibilitychange', onHide)
+
     return () => {
+      document.removeEventListener('visibilitychange', onHide)
       clearTimeout(startTimerRef.current)
       detachAndStopRecognition()
       window.speechSynthesis?.cancel()
@@ -133,7 +137,7 @@ export default function CallModal({ onClose, onSaved, showToast }) {
       setTranscript(prev => [...prev, agentEntry])
       speak(reply)
     } catch (err) {
-      setNotice(err.message || 'Could not reach the AI. Please try again.')
+      showToast(err.message || 'Could not reach the AI. Please try again.')
     } finally {
       setThinking(false)
     }
@@ -143,6 +147,7 @@ export default function CallModal({ onClose, onSaved, showToast }) {
     const recognition = new SpeechRecognitionImpl()
     recognition.lang = 'en-US'
     recognition.interimResults = true   
+    recognition.continuous = false
     recognition.maxAlternatives = 1
 
     let finalText = ''
@@ -166,7 +171,7 @@ export default function CallModal({ onClose, onSaved, showToast }) {
       setInterim('')
       
       if (event.error !== 'aborted') {
-        setNotice(RECOGNITION_ERRORS[event.error] || `Microphone error: ${event.error}`)
+        showToast(RECOGNITION_ERRORS[event.error] || `Microphone error: ${event.error}`)
       }
     }
 
@@ -178,7 +183,7 @@ export default function CallModal({ onClose, onSaved, showToast }) {
       
       const spoken = (finalText || lastInterim).trim()
       if (spoken) sendMessage(spoken)
-      else setNotice(RECOGNITION_ERRORS['no-speech'])
+      else showToast(RECOGNITION_ERRORS['no-speech'])
     }
 
     recognitionRef.current = recognition
@@ -188,13 +193,13 @@ export default function CallModal({ onClose, onSaved, showToast }) {
     } catch {
       recognitionRef.current = null
       setListening(false)
-      setNotice('Could not start the microphone. Please tap again.')
+      showToast('Could not start the microphone. Please tap again.')
     }
   }
 
   function toggleListening() {
     if (!SpeechRecognitionImpl) {
-      setNotice('Speech recognition is not supported in this browser. Use Chrome, or type in the box below.')
+      showToast('Speech recognition is not supported in this browser. Use Chrome, or type in the box below.')
       return
     }
 
@@ -203,35 +208,13 @@ export default function CallModal({ onClose, onSaved, showToast }) {
       return
     }
 
-    setNotice('')
-
-    
+   
     stopSpeaking()
     detachAndStopRecognition()
 
+    
     clearTimeout(startTimerRef.current)
-    startTimerRef.current = setTimeout(async () => {
-      
-      if (navigator.mediaDevices?.getUserMedia) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-          
-          stream.getTracks().forEach(t => t.stop())
-        } catch (err) {
-          const name = err?.name || ''
-          if (name === 'NotAllowedError' || name === 'SecurityError') {
-            setNotice(RECOGNITION_ERRORS['not-allowed'])
-          } else if (name === 'NotFoundError' || name === 'NotReadableError') {
-            setNotice(RECOGNITION_ERRORS['audio-capture'])
-          } else {
-            setNotice(`Microphone error: ${name || 'unknown'}`)
-          }
-          return
-        }
-        await new Promise(r => setTimeout(r, 150))
-      }
-      startRecognition()
-    }, 250)
+    startTimerRef.current = setTimeout(startRecognition, 250)
   }
 
   function handleManualSubmit(e) {
@@ -329,15 +312,6 @@ export default function CallModal({ onClose, onSaved, showToast }) {
             <div key={i} className="wave" style={{ width: 5, height: 20, background: '#22d3ee', borderRadius: 4, animationDelay: `${i * 150}ms` }} />
           ))}
         </div>
-
-        {notice && (
-          <div role="alert" style={{
-            background: '#3f1d1d', border: '1px solid #7f1d1d', color: '#fecaca',
-            borderRadius: 12, padding: '10px 12px', fontSize: 13, lineHeight: 1.4
-          }}>
-            {notice}
-          </div>
-        )}
 
         <button
           onClick={toggleListening}

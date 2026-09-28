@@ -6,14 +6,14 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
 import { api, getToken, setToken } from './api'
+import { useIdleLogout, isSessionStale, touchActivity } from './hooks/useIdleLogout'
 
 export default function App() {
   const [page, setPage] = useState('landing')
   const [user, setUser] = useState(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [toast, setToastMsg] = useState('')
-  const lastTrackedPage = useRef('')
-  const previousPage = useRef('')
+  const loggingOutRef = useRef(false)
 
   function showToast(msg) {
     setToastMsg(msg)
@@ -23,12 +23,18 @@ export default function App() {
   useEffect(() => {
     async function restoreSession() {
       if (getToken()) {
-        try {
-          const { user } = await api.me()
-          setUser(user)
-          setPage('dashboard')
-        } catch {
+        if (isSessionStale()) {
+         
           setToken(null)
+          showToast('Your session expired. Please log in again.')
+        } else {
+          try {
+            const { user } = await api.me()
+            setUser(user)
+            setPage('dashboard')
+          } catch {
+            setToken(null)
+          }
         }
       }
       setCheckingAuth(false)
@@ -36,31 +42,36 @@ export default function App() {
     restoreSession()
   }, [])
 
-  useEffect(() => {
-    if (checkingAuth) return
-
-    const pagePaths = {
-      landing: '/',
-      login: '/login',
-      signup: '/signup',
-      dashboard: '/dashboard'
+  
+  async function endSession({ message, nextPage, callServer = true }) {
+    if (loggingOutRef.current) return
+    loggingOutRef.current = true
+    if (callServer) {
+      try { await api.logout() } catch { }
     }
-    const currentPage = pagePaths[page] || '/'
-    if (lastTrackedPage.current === currentPage) return
-
-    const referrer = previousPage.current || document.referrer || 'direct'
-    lastTrackedPage.current = currentPage
-    previousPage.current = currentPage
-    api.trackVisit({ page: currentPage, referrer }).catch(() => {})
-  }, [checkingAuth, page])
-
-  async function handleLogout() {
-    try { await api.logout() } catch { /* ignore */ }
     setToken(null)
     setUser(null)
-    setPage('landing')
-    showToast('Logged out')
+    setPage(nextPage)
+    showToast(message)
+    loggingOutRef.current = false
   }
+
+  function handleLogout() {
+    return endSession({ message: 'Logged out', nextPage: 'landing' })
+  }
+
+  const idleSecondsLeft = useIdleLogout({
+    enabled: Boolean(user),
+    onIdle: () => endSession({
+      message: 'You were logged out because of inactivity. Please log in again.',
+      nextPage: 'login'
+    }),
+    onExpired: () => endSession({
+      message: 'Your session expired. Please log in again.',
+      nextPage: 'login',
+      callServer: false
+    })
+  })
 
   function handleNavigate(target) {
     if (target === 'dashboard' && !user) {
@@ -82,6 +93,27 @@ export default function App() {
       {page === 'login' && <Login onNavigate={handleNavigate} onAuthed={setUser} showToast={showToast} />}
       {page === 'signup' && <Signup onNavigate={handleNavigate} onAuthed={setUser} showToast={showToast} />}
       {page === 'dashboard' && user && <Dashboard user={user} showToast={showToast} />}
+
+      {user && idleSecondsLeft !== null && (
+        <div role="alert" style={{
+          position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 300,
+          width: 'calc(100% - 24px)', maxWidth: 420, background: '#18181b', border: '1px solid #f59e0b',
+          color: '#fde68a', borderRadius: 16, padding: '12px 16px', fontSize: 14,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          boxShadow: '0 20px 40px rgba(0,0,0,.5)'
+        }}>
+          <span>Logging you out in <strong>{idleSecondsLeft}s</strong> due to inactivity.</span>
+          <button
+            onClick={touchActivity}
+            style={{
+              background: '#f59e0b', color: '#18181b', border: 'none', borderRadius: 999,
+              padding: '8px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap'
+            }}
+          >
+            Stay logged in
+          </button>
+        </div>
+      )}
 
       <Toast message={toast} />
     </div>
