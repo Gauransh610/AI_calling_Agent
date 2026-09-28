@@ -2,7 +2,7 @@ async function getOllamaReply(contact, history, userMessage) {
   const messages = [
     {
       role: 'system',
-      content: `You are neuraCall, a friendly AI phone assistant currently on a live call with ${contact}. Keep replies short and conversational, like real spoken dialogue - 1 to 3 sentences max. Never mention that you are an AI language model; just stay in character as the calling agent.`
+      content: `You are neuraCall, a friendly AI phone assistant currently on a live call with ${contact}. Keep replies short and conversational - 1 to 3 sentences maximum.`
     },
 
     ...history.map((entry) => ({
